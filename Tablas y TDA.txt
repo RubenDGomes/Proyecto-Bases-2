@@ -1,0 +1,215 @@
+CREATE OR REPLACE TYPE tdaFecha AS OBJECT( 
+    fecha_inicio date, 
+    fecha_fin date, 
+    STATIC FUNCTION tda_validar_fecha_inicio(fecha_inicio date) RETURN date, 
+    STATIC FUNCTION tda_validar_fecha_fin(fecha_fin date) RETURN date 
+    );
+    
+CREATE OR REPLACE TYPE BODY tdaFecha IS
+    STATIC FUNCTION tda_validar_fecha_inicio(fecha_inicio date) RETURN date
+IS
+BEGIN
+    IF fecha_inicio <= CURRENT_DATE THEN
+    RETURN (fecha_inicio);
+    ELSE
+    RAISE_APPLICATION_ERROR(-20001,'Fecha inicial debe ser menor a la actual');
+    END IF;
+END;
+
+    STATIC FUNCTION tda_validar_fecha_fin(fecha_fin date) RETURN date
+IS
+BEGIN
+    IF fecha_fin >= CURRENT_DATE THEN
+    RETURN (fecha_fin);
+    ELSE
+    RAISE_APPLICATION_ERROR(-20001,'Fecha final debe ser mayor a la actual');
+    END IF;
+END;
+END;
+
+CREATE OR REPLACE TYPE tdaNombre AS OBJECT( 
+    nombre varchar2(50),
+    STATIC FUNCTION tda_validar_nombre(nombre varchar2) RETURN varchar
+);
+
+CREATE OR REPLACE TYPE BODY tdaNombre IS
+    STATIC FUNCTION tda_validar_nombre(nombre varchar2) RETURN varchar
+IS
+BEGIN
+RETURN (NULL);
+END;
+END;
+
+CREATE OR REPLACE TYPE tdaCantidad AS OBJECT( 
+    cantidad number,
+    STATIC FUNCTION tda_validar_cantidad(cantidad number) RETURN number
+);
+
+CREATE OR REPLACE TYPE BODY tdaCantidad IS
+    STATIC FUNCTION tda_validar_cantidad(cantidad number) RETURN number
+IS
+BEGIN
+RETURN (NULL);
+END;
+END;
+
+create table Proveedor (
+rif integer,
+nombre tdaNombre,
+constraint pkProveedor primary key (rif)
+
+);
+
+create table CondicionServicio(
+idCondicion integer,
+montoServicio float not null,
+descripcion varchar2(150)not null,
+fecha tdaFecha,
+fk_Proveedor integer,
+constraint pkCondicion primary key (idCondicion, fk_Proveedor),
+constraint fkProveedorCondicion foreign key (fk_Proveedor) references Proveedor (rif)
+);
+
+create table SectorComercio (
+idSector integer,
+nombre tdaNombre,
+constraint pkSector primary key (idSector)
+
+);
+
+create table Comercio (
+rifComercio integer,
+nombre tdaNombre,
+fkSector integer not null,
+constraint pkComercio primary key (rifComercio),
+constraint fkSectorComercio foreign key (fkSector) references SectorComercio (idSector)
+);
+
+create table Lugar (
+idLugar integer,
+nombre tdaNombre,
+tipoLugar varchar2(50) not null,
+fkLugar integer not null,
+constraint pkLugar primary key (idLugar),
+constraint fkLugar foreign key (fkLugar) references Lugar(idLugar),
+ constraint tipo_check CHECK (tipoLugar in ('Pais','Estado','Municipio'))
+);
+
+create table Cliente (
+cedula integer,
+primerNombre varchar2(50) not null,
+segundoNombre varchar2(50),
+primerApellido varchar2(50) not null,
+segundApelldio varchar2(50) not null,
+correo varchar2(50) not null,
+constraint pkCliente primary key (cedula)
+);
+
+create table LugarProveedor (
+fkLugar integer,
+fkProveedor integer,
+constraint pkLugarProveedor primary key (fkLugar, fkProveedor),
+constraint fkLugar_LugarProveedor foreign key (fkLugar) references Lugar(idLugar),
+constraint fkProveedor_LugarProveedor foreign key (fkProveedor) references Proveedor(rif)
+);
+
+create table LugarComercio (
+fkLugar integer,
+fkComercio integer,
+constraint pkLugarComercio primary key (fkLugar, fkComercio),
+constraint fkLugar_LugarComercio foreign key (fkLugar) references Lugar(idLugar),
+constraint fkComercio_LugarComercio foreign key (fkComercio) references Comercio(rifComercio)
+);
+
+
+
+
+create table DireccionEnvio (
+fkLugar integer,
+fkCliente integer,
+constraint pkDireccionEnvio primary key (fkLugar, fkCliente),
+constraint fkLugar_DireccionEnvio foreign key (fkLugar) references Lugar(idLugar),
+constraint fkCliente_DireccionEnvio foreign key (fkCliente) references Cliente (cedula)
+);
+
+create table Vehiculo (
+idVehiculo integer,
+tipoVehiculo varchar2(50) not null,
+constraint pkVehiculo primary key(idVehiculo),
+ constraint tipoVehiculo CHECK (tipoVehiculo in ('Camioneta','Moto','Bicicleta'))
+
+);
+
+create table TransporteProveedor (
+estatus varchar2(20) not null,
+cantidad tdaCantidad,
+fkProveedorLugarLugar integer,
+fkProveedorLugarProveedor integer,
+fkVehiculo integer,
+fkProveedor integer,
+constraint pkTransporteProveedor primary key (fkVehiculo, fkProveedor),
+constraint fkLugarProveedor_TransporteProveedor foreign key (fkProveedorLugarLugar, fkProveedorLugarProveedor) references LugarProveedor(fkLugar, fkProveedor),
+constraint fkProveedor_TransporteProveedor foreign key (fkProveedor) references Proveedor (rif),
+constraint fkVehiculo_TransporteProveedor foreign key (fkVehiculo) references Vehiculo (idVehiculo),
+constraint estatusTransporte CHECK (estatus in ('Reparacion','Disponible'))
+);
+
+create table Rating (
+idRating integer,
+valor float,
+constraint pkRating primary key (idRating)
+);
+
+create table Contrato (
+montoAcordado float not null,
+fecha tdaFecha,
+fkProveedor integer,
+fkComercio integer,
+constraint pkContrato primary key(fkProveedor,fkComercio),
+constraint fkProveedor_Contrato foreign key (fkProveedor) references Proveedor (rif),
+constraint fkComercio_Contrato foreign key (fkComercio) references Comercio (rifComercio)
+);
+
+create table Envio (
+cantidad tdaCantidad,
+fecha tdaFecha, 
+fkProveedor integer,
+fkComercio integer,
+fkLugar integer,
+constraint fkProveedor_Envio foreign key (fkProveedor) references Proveedor (rif),
+constraint fkComercio_Envio foreign key (fkComercio) references Comercio (rifComercio),
+constraint fkLugar_Envio foreign key (fkLugar) references Lugar (idLugar)
+);
+
+create table cp (
+fechaRegistro date not null,
+fkCliente integer,
+fkProveedor integer,
+constraint pkCp primary key (fkCliente, fkProveedor),
+constraint fkClienteProveedor foreign key (fkCliente) references Cliente (cedula),
+constraint fkProveedorCliente foreign key (fkProveedor) references Proveedor (rif)
+);
+
+create table Orden (
+traking integer,
+fecha tdaFecha, 
+cantidad tdaCantidad,
+referencia varchar2(150) not null,
+estatusOrden varchar2(20) not null,
+fkClienteCp integer,
+fkProveedorCp integer,
+fkLugar integer,
+fkRating integer,
+fkProveedorVehiculoTransporte integer,
+fkProveedorTransporte integer,
+fkClienteEnvio integer,
+fkLugarEnvio integer,
+constraint pkOrden primary key (traking),
+constraint fkCpOrden foreign key (fkClienteCp, fkProveedorCp) references cp (fkCliente, fkProveedor),
+constraint fkLugarOrden foreign key (fkLugar) references Lugar (idLugar),
+constraint fkRatingOrden foreign key (fkRating) references Rating (idRating),
+constraint fkTransporteOrden foreign key (fkProveedorVehiculoTransporte, fkProveedorTransporte) references TransporteProveedor (fkVehiculo, fkProveedor),
+constraint fkDireccionEnvioOrden foreign key (fkClienteEnvio, fkLugarEnvio) references DireccionEnvio (fkCliente, fkLugar),
+constraint estatusOrden CHECK (estatusOrden in ('En camino','Entregado','Cancelado'))
+
+);
